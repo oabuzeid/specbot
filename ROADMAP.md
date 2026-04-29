@@ -6,17 +6,17 @@ This document explains the strategy behind specbot — why it exists, how it's p
 
 Product teams maintain three systems that should agree but rarely do:
 
-- **The spec** — the PRD, the markdown doc, the source of intent
+- **The spec** — the PRD
 - **The tickets** — Linear, Jira, the engineering work breakdown
 - **The designs** — Figma frames and components
 
-When any one changes, the others go stale. The PM updates the spec; tickets don't reflect it. The designer iterates in Figma; the spec doesn't capture it. An engineer modifies a ticket scope; nobody updates the spec or design.
+When any one changes, the others go stale. The PM updates the spec; tickets don't reflect it. The designer or PM iterates in Figma; the spec doesn't capture it. An engineer modifies a ticket's scope; nobody updates the spec or design.
 
 Existing tools take one of two approaches, both of which fall short:
 
-**One-way generators** (PRD → tickets) abandon you the moment the spec changes. They're glorified import scripts.
+**One-way generators** (PRD → tickets) are inconsistent the moment a spec changes. Tickets become stale after a PRD change.
 
-**Omnidirectional sync** (everything writes to everything) creates impossible conflict resolution. When the spec says "3-step wizard," Figma shows 2 steps, and the ticket says 4 — which one wins? You either get silent overwrites or you build a merge UI, which is its own product.
+**Omnidirectional sync** (everything writes to everything) creates challenging conflict resolution. When the spec says "3-step wizard," Figma shows 2 steps, and the ticket says 4 — which one wins? You either get silent overwrites or you build a merge UI, which is its own product.
 
 ## The Specbot Thesis
 
@@ -42,7 +42,7 @@ The CLI in v0.1 does ticket generation, which Claude can do directly. The persis
 
 ### v0.1 — Foundation (current)
 
-**Goal:** Build the substrate that v0.2 will sit on top of.
+**Goal:** Build the baseline that v0.2 will sit on top of.
 
 This phase establishes the spec parser, AI generation pipeline, pluggable provider interface, state tracking, and basic drift detection. It also ships a working CLI so the project is immediately useful, even though the architectural USP isn't fully realized yet.
 
