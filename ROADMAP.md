@@ -28,12 +28,7 @@ A Claude chat with Linear/Figma MCPs can generate tickets. It cannot:
 - Run in CI
 - Log every interaction and learn from edits over time
 - Be installed by other teams without prompting expertise
-
-v0.1 (one-way generation) is replaceable. v0.2 and v0.3 are not.
-
-## What this becomes that Linear or Jira won't build
-
-Linear and Jira will ship AI ticket generation within a year. They will not ship a tool that operates *between* their product, the design tool, the spec repo, and Slack — because no single vendor owns that surface. The cross-tool agent is the part that can't be commoditized.
+  
 
 ## Phasing
 
@@ -118,8 +113,8 @@ Goal: Make v0.2 and v0.3 features accessible without a terminal.
 
 The thesis (spec as merge point, agent-directed routing, learning loop) is general. The implementation choices (Linear, Jira, Figma, markdown, SQLite) are specific. Teams will want different combinations:
 
-- A startup might want Notion specs, Linear tickets, Penpot designs
-- An enterprise might need Confluence, Jira, Sketch
+- A startup might want Notion specs, Linear tickets, Claude designs
+- An enterprise might need Confluence, Jira, Figma
 - A solo founder might want markdown specs and Linear only
 
 The pluggable provider interface (`src/integrations/types.ts`) makes adding a new system a one-hour job. Same pattern extends to spec sources, design tools, and (in v0.3) decision sources.
