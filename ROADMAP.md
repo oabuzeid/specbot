@@ -16,7 +16,7 @@ Route every change through the spec as a merge point. Use an LLM agent to direct
 
 When a ticket or design changes, the agent decides whether to open a spec PR immediately, batch the change with other recent changes, ask the PM in Slack for clarification, or pause if it detects a possible loop. The PM reviews and merges spec PRs. After merge, downstream sync updates the other systems.
 
-Over time, conduit logs how teams edit its outputs, identifies patterns, and proposes prompt updates that pass an eval harness before shipping.
+Over time, Conduit logs how teams edit its outputs, identifies patterns, and proposes prompt updates that pass an eval harness before shipping.
 
 ## Why this isn't replaceable by a Claude conversation with MCPs
 
@@ -28,11 +28,20 @@ A Claude chat with Linear/Figma MCPs can generate tickets. It cannot:
 - Run in CI
 - Log every interaction and learn from edits over time
 - Be installed by other teams without prompting expertise
-  
+
+v0.1 (one-way generation) is replaceable. v0.2 and beyond are not.
+
+## What this becomes that Linear or Jira won't build
+
+Linear and Jira will ship AI ticket generation within a year. They will not ship a tool that operates between their product, the design tool, the spec repo, and Slack — because no single vendor owns that surface. The cross-tool agent is the part that can't be commoditized.
 
 ## Phasing
 
+The phases are organized around audience. v0.1 through v0.2 are engine work for developers. v0.3 is the first phase a real PM will use. v0.4 adds learning on top of v0.3's usage data. v0.5 adds more user surfaces.
+
 ### v0.1 — Foundation (built)
+
+Audience: developer building or forking the project.
 
 Goal: A working CLI that generates tickets from a spec and detects drift. Validates the AI quality and integration layer before adding agentic logic.
 
@@ -46,75 +55,120 @@ Built:
 - Figma audit (`conduit audit`)
 - GitHub Action for PR sync checks
 
-Deliberately not in v0.1:
-- Reaction to ticket or Figma changes
-- Spec PR generation
-- Continuous service
-- Anything bidirectional or agentic
+### v0.1.x — Engine UX improvements (next, small release)
 
-### v0.2 — Agentic sync engine + capture layer
+Audience: developer.
 
-Goal: Make the LLM the orchestrator. Log every interaction so v0.3 has training data.
+Goal: Address known gaps in v0.1's flexibility before adding agentic logic on top. These changes establish the configuration surface that v0.2's agent will operate over.
+
+1. **Configurable ticket breakdown** — `conduit.yaml` accepts a `breakdown` option: `by_section` (current), `by_layer` (backend/frontend split), `by_component`, or `custom` (user provides a prompt fragment). This becomes the action space the v0.2 agent can operate within.
+
+2. **Project-level acceptance criteria format** — replace the current `detail_level` field with an `ac_format` object: `include_background`, `include_figma_links`, `format` (bullets, GWT, numbered), `max_count`. Configured once per project, not per ticket.
+
+3. **Default tone in AI engine prompts** — hard-code the opinionated tone (concise, direct, no figures of speech, no jargon) in the prompts. Tone is overridable in YAML but not surfaced in the example config. v0.3 will expose tone as a user-facing setting in Slack.
+
+### v0.2 — Agentic engine + capture layer
+
+Audience: developer.
+
+Goal: Make the LLM the orchestrator. Log every interaction so v0.4's learning loop has data to work with.
 
 Build order:
 
 1. **Reverse-direction analyzer** (`src/core/reverse-analyzer.ts`) — given a ticket and its mapped spec section, produce a markdown diff describing how they've diverged.
 
-2. **Spec PR generator** (`src/core/spec-pr.ts`) — apply the diff to the spec file, open a GitHub PR with PM-grade descriptions: source (which ticket, which Figma frame), what changed, what conduit will propagate after merge. Uses Octokit.
+2. **Spec PR generator** (`src/core/spec-pr.ts`) — apply the diff to the spec file, open a GitHub PR with PM-grade descriptions: source (which ticket, which Figma frame), what changed, what Conduit will propagate after merge. Uses Octokit.
 
 3. **Investigation agent** (`src/core/agent.ts`) — when a webhook fires, the LLM decides the action: open a PR now, batch with other recent changes, ping the PM in Slack, or pause for loop detection. This is the agentic component.
 
 4. **Webhook listener service** (`src/server/`) — Express server with `/webhook/linear`, `/webhook/jira`, `/webhook/figma` endpoints. New CLI: `conduit serve --port 3000`. Deployable to Cloud Run or Fly.io.
 
-5. **Merge-propagation** — listen for `pull_request.closed` events. When a conduit-opened PR merges, run downstream sync.
+5. **Multi-destination ticket routing** — `conduit.yaml` supports per-spec or per-section ticket destinations. State model tracks destination per ticket, not per project.
 
-6. **Loop prevention** — tag every change conduit makes with a hash. Skip processing webhooks for changes conduit just wrote.
+6. **Merge-propagation** — listen for `pull_request.closed` events. When a Conduit-opened PR merges, run downstream sync.
 
-7. **PRD ambiguity scanner** — pre-generation step that flags vague verbs ("automatically," "smoothly"), undefined terms, missing edge cases, and conflicting requirements between sections.
+7. **Loop prevention** — tag every change Conduit makes with a hash. Skip processing webhooks for changes Conduit just wrote.
 
-8. **Acceptance criteria regression detector** — when a ticket is edited externally, compare new AC against the original. Flag any that were weakened or removed.
+8. **PRD ambiguity scanner** — pre-generation step that flags vague verbs ("automatically," "smoothly"), undefined terms, missing edge cases, and conflicting requirements between sections.
 
-9. **Artifact capture layer** — every run writes a job folder: full spec context, prompt sent to Claude, raw response, draft tickets, post-edit ticket state 24-48h later. Stored in SQLite. No learning logic yet — just disciplined logging. v0.3 will use this data.
+9. **Acceptance criteria regression detector** — when a ticket is edited externally, compare new AC against the original. Flag any that were weakened or removed.
 
-### v0.3 — Learning loop + cross-tool extraction
+10. **Artifact capture layer** — every run writes a job folder: full spec context, prompt sent to Claude, raw response, draft tickets, post-edit ticket state 24-48h later. Stored in SQLite. No learning logic — just disciplined logging. v0.4 will use this data.
 
-Goal: Conduit gets measurably better over time. Extends to meetings, Slack, and decisions across the full product surface.
+v0.2 stays CLI- and YAML-only. No user-facing surface.
+
+### v0.3 — Slack workflow (the product launches here)
+
+Audience: real PMs using the product for the first time.
+
+Goal: Make Conduit usable by non-technical PMs through a conversational Slack interface. This is the phase where Conduit stops being engine work and starts being a product.
 
 Components:
 
-1. **Structured diff layer** — field-level comparison between draft and final ticket. Title, description, AC, labels.
+1. **Conduit Slack app** — OAuth flow, slash commands (`/conduit start`, `/conduit continue`), interactive components, event subscriptions, message threading.
 
-2. **Pattern aggregator** — weekly job that posts to Slack or Linear: "I noticed 3 patterns in how your team edits my tickets. Want me to adjust? [Show diff] [Apply] [Reject]."
+2. **Project setup flow** — user starts a thread, Conduit asks for the spec (paste, file upload, or repo link), proposes a breakdown, asks where tickets should go, asks for AC format preferences, asks for any extra context (Figma links, PDFs, external docs).
 
-3. **Eval harness** — held-out set of (spec, expected ticket) pairs. Every prompt change runs against the eval before shipping.
+3. **Breakdown preview and edit** — Conduit proposes the ticket breakdown in the thread. User can approve, modify ("split by backend/frontend"), or rewrite individual ticket titles before generation.
 
-4. **Self-improvement loop** — propose prompt updates from aggregated patterns. Validate via eval. Surface to user for approval before shipping.
+4. **Destination selection** — user picks which Linear team or Jira project the tickets should be created in. Conduit remembers per-project defaults.
 
-5. **Meeting transcript ingestion** — drop a Granola, Otter, or Zoom transcript into conduit. Agent extracts decisions, proposes spec updates, flags decisions that contradict existing spec content. Highest-impact v0.3 feature.
+5. **Context attachment** — user can paste Figma links, attach PDFs, drop Slack message links. Conduit ingests these as extra context for ticket generation.
+
+6. **Confirmation and follow-up** — Conduit posts a confirmation with links to created tickets. User can request edits, additions, or full regeneration from the same thread.
+
+7. **Spec PR approval flow** — when v0.2's agent proposes a spec PR, the user approves or requests changes in Slack rather than via GitHub UI.
+
+8. **Tone override** — user can change tone from the Slack thread ("make these more concise"). Default tone remains opinionated.
+
+9. **"Conduit is learning your team's patterns" placeholder** — surface a weekly thread message even before the actual learning loop is wired up. This is the UI shell v0.4 will attach real learning to. Keeps the product feeling alive and gives users a touchpoint for the eventual learning features.
+
+v0.3 is the most important release. It's the only phase a non-technical PM will ever touch. The success of the project depends on how good v0.3 feels to use.
+
+### v0.4 — Learning loop on captured data
+
+Audience: PMs (invisible — surfaces through v0.3's UI shell).
+
+Goal: Make Conduit measurably better over time using the data v0.2 captured and v0.3 generated through real usage.
+
+This phase is intentionally scoped *after* v0.3 because the learning loop has nothing useful to learn from until real teams are interacting with the product. Building it earlier would mean aggregating patterns from test runs, which is noise, not signal.
+
+Components:
+
+1. **Structured diff layer** — field-level comparison between Conduit's draft and the final ticket after team edits. Title, description, AC, labels.
+
+2. **Pattern aggregator** — weekly job that surfaces top edit patterns to v0.3's UI shell. "I noticed 3 patterns. Want me to adjust? [Apply] [Reject]."
+
+3. **Eval harness** — held-out set of (spec, expected ticket) pairs. Every prompt change runs against the eval before shipping. Without this, the learning loop drifts and quality degrades silently.
+
+4. **Self-improvement mechanism** — propose prompt updates from aggregated patterns. Validate via eval. Surface to user for approval before shipping.
+
+5. **Meeting transcript ingestion** — drop a Granola, Otter, or Zoom transcript into Conduit (via Slack file upload). Agent extracts decisions, proposes spec updates, flags decisions that contradict existing spec content.
 
 6. **Decision log auto-generation** — agent watches Slack channels and ticket comments. Detects decision phrases ("we're going with option B," "punting to Q2"). Writes structured ADRs to a `decisions/` folder.
 
 7. **Stakeholder summary generator** — weekly digest of changes across all projects, in three flavors: leadership, engineering, design.
 
-8. **Stale work detector with action proposals** — agent finds tickets that haven't moved in N days, reads the ticket, checks linked PRs and Slack mentions, proposes specific actions ("close as obsolete," "ping engineer X," "merge with ticket Y").
+8. **Stale work detector with action proposals** — agent finds tickets that haven't moved in N days, reads the ticket, checks linked PRs and Slack mentions, proposes specific actions.
 
-9. **Roadmap reality checker** — compares stated roadmap against actual ticket flow and PR velocity. Outputs honest assessments: "you committed to X this quarter, 30% of those tickets are in progress, 2 linked PRs are stalled."
+9. **Roadmap reality checker** — compares stated roadmap against actual ticket flow and PR velocity.
 
-### v0.4 — Delivery surface
+### v0.5 — Additional user surfaces
 
-Goal: Make v0.2 and v0.3 features accessible without a terminal.
+Audience: PMs who want surfaces beyond Slack.
 
-- Slack notifications and quick-action buttons (approve, request changes, dismiss spec PRs)
+Goal: Make Conduit accessible in more places.
+
 - Tauri menu bar app for manual sync and recent activity
-- Browser extension to trigger sync from Linear, Jira, or Figma pages
-- Notion as a spec source
+- Browser extension to trigger Conduit from Linear, Jira, or Figma pages
+- Notion as a spec source (read PRDs from Notion alongside markdown)
 
 ## Why this is designed to be forked
 
-The thesis (spec as merge point, agent-directed routing, learning loop) is general. The implementation choices (Linear, Jira, Figma, markdown, SQLite) are specific. Teams will want different combinations:
+The thesis (spec as merge point, agent-directed routing, learning loop) is general. The implementation choices (Linear, Jira, Figma, markdown, SQLite, Slack) are specific. Teams will want different combinations:
 
 - A startup might want Notion specs, Linear tickets, Claude designs
 - An enterprise might need Confluence, Jira, Figma
 - A solo founder might want markdown specs and Linear only
 
-The pluggable provider interface (`src/integrations/types.ts`) makes adding a new system a one-hour job. Same pattern extends to spec sources, design tools, and (in v0.3) decision sources.
+The pluggable provider interface (`src/integrations/types.ts`) makes adding a new system a one-hour job. Same pattern extends to spec sources, design tools, and decision sources.

@@ -4,7 +4,7 @@
 
 Conduit is a spec-arbitrated, agent-directed sync engine for product teams. When specs, tickets, and designs fall out of sync, every change is routed through the spec as a merge point. An LLM agent decides how to route each change: open a PR now, batch with related changes, ask the PM, or pause for loop detection.
 
-Over time, conduit logs how teams edit its outputs, identifies patterns, and proposes prompt updates that pass an eval harness before shipping.
+Over time, Conduit logs how teams edit its outputs, identifies patterns, and proposes prompt updates that pass an eval harness before shipping.
 
 ## Why this exists when Claude + MCP can do similar things
 
@@ -17,7 +17,7 @@ A Claude conversation with Linear and Figma MCPs can do most of what `conduit ge
 - Log interactions and learn from edits over time
 - Be installed by other teams without prompting expertise
 
-v0.1's USP is weak (Claude can do it directly). v0.2 and v0.3's USPs are strong.
+v0.1's USP is weak (Claude can do it directly). v0.2 onward is where Conduit becomes meaningfully different.
 
 ## What this becomes that Linear or Jira won't build
 
@@ -67,35 +67,72 @@ ANTHROPIC_API_KEY (required), LINEAR_API_KEY (Linear), JIRA_HOST + JIRA_EMAIL + 
 
 ## Roadmap
 
-See ROADMAP.md for the full version. Build order summary:
+See ROADMAP.md for the full version. Build order summary below.
 
-### v0.2 — Agentic sync engine + capture layer
+The phases are organized around audience. v0.1 through v0.2 are engine work for developers. v0.3 is the first phase a real PM will use. v0.4 adds learning on top of v0.3's usage data. v0.5 adds more user surfaces.
 
-1. Reverse-direction analyzer (`src/core/reverse-analyzer.ts`)
-2. Spec PR generator (`src/core/spec-pr.ts`) using Octokit
-3. Investigation agent (`src/core/agent.ts`) — LLM directs control flow
-4. Webhook listener service (`src/server/`) — `conduit serve --port 3000`
-5. Merge-propagation — listen for spec PR merges, run downstream sync
-6. Loop prevention — hash-based change attribution
-7. PRD ambiguity scanner — pre-generation step
-8. AC regression detector — flag weakened acceptance criteria
-9. Artifact capture layer — log every run to SQLite. No learning yet, just capture.
+### v0.1.x — Engine UX improvements (next, small release)
 
-### v0.3 — Learning loop + cross-tool extraction
+Audience: developer.
 
-1. Structured diff layer
-2. Pattern aggregator — weekly Slack/Linear post
-3. Eval harness — held-out (spec, expected ticket) pairs
-4. Self-improvement loop — eval-gated prompt updates
-5. Meeting transcript ingestion — Granola/Otter/Zoom → spec PRs
-6. Decision log auto-generation — Slack/ticket-comment scanning → ADRs
+1. Configurable ticket breakdown — `breakdown` config: `by_section`, `by_layer`, `by_component`, `custom`. This becomes the action space the v0.2 agent operates over.
+2. Project-level acceptance criteria format — replace `detail_level` with `ac_format` object (include_background, include_figma_links, format, max_count). Configured once per project, not per ticket.
+3. Default opinionated tone hard-coded in AI engine prompts. Override available in YAML but not in example config.
+
+### v0.2 — Agentic engine + capture layer
+
+Audience: developer. No user-facing surface.
+
+1. Reverse-direction analyzer (`src/core/reverse-analyzer.ts`) — ticket diff vs. mapped spec section
+2. Spec PR generator (`src/core/spec-pr.ts`) using Octokit — PM-grade PR descriptions
+3. Investigation agent (`src/core/agent.ts`) — LLM directs control flow on webhook events
+4. Webhook listener service (`src/server/`) — Express, `/webhook/linear`, `/webhook/jira`, `/webhook/figma`. CLI: `conduit serve --port 3000`
+5. Multi-destination ticket routing — per-spec or per-section destinations
+6. Merge-propagation — listen for spec PR merges, run downstream sync
+7. Loop prevention — hash-based change attribution
+8. PRD ambiguity scanner — pre-generation step
+9. AC regression detector — flag weakened acceptance criteria
+10. Artifact capture layer — every run logged to SQLite. No learning yet, just capture. v0.4 will use this.
+
+### v0.3 — Slack workflow (the product launches here)
+
+Audience: real PMs. This is the most important phase.
+
+1. Conduit Slack app — OAuth, slash commands, interactive components, event subscriptions
+2. Project setup flow — start a thread, paste spec, Conduit asks the configuration questions
+3. Breakdown preview and edit — Conduit proposes, user approves or modifies in thread
+4. Destination selection — user picks Linear team or Jira project
+5. Context attachment — Figma links, PDFs, external docs ingested as extra context
+6. Confirmation and follow-up — links to created tickets, edit requests from thread
+7. Spec PR approval flow — v0.2's agent proposes spec PRs; user approves in Slack
+8. Tone override from Slack — default tone stays opinionated; user can override
+9. "Conduit is learning your team's patterns" placeholder — UI shell for v0.4
+
+v0.3 success determines project success. It's the only phase non-technical PMs touch.
+
+### v0.4 — Learning loop on captured data
+
+Audience: PMs (invisible — surfaces through v0.3's UI shell).
+
+Scoped after v0.3 because the learning loop needs real usage data. Building it earlier would mean aggregating patterns from test runs (noise, not signal).
+
+1. Structured diff layer — field-level draft vs. final comparison
+2. Pattern aggregator — weekly job surfaces top edit patterns via v0.3's UI shell
+3. Eval harness — held-out (spec, expected ticket) pairs; every prompt change must pass before shipping
+4. Self-improvement mechanism — propose prompt updates from patterns, eval-gated, user-approved
+5. Meeting transcript ingestion (via Slack file upload) — Granola/Otter/Zoom → extracted decisions → spec PRs
+6. Decision log auto-generation — Slack/ticket-comment scanning → ADRs in `decisions/`
 7. Stakeholder summary generator — weekly leadership/eng/design digests
 8. Stale work detector with action proposals
 9. Roadmap reality checker
 
-### v0.4 — Delivery surface
+### v0.5 — Additional user surfaces
 
-Slack quick-actions, Tauri menu bar, browser extension, Notion as spec source.
+Audience: PMs.
+
+- Tauri menu bar app
+- Browser extension
+- Notion as a spec source
 
 ## Adding a new ticket provider
 
@@ -111,3 +148,4 @@ Slack quick-actions, Tauri menu bar, browser extension, Notion as spec source.
 - ora spinners for async, chalk for color
 - State uses sha256 hashes (first 12 chars)
 - v0.2+: log every LLM call with input and output to SQLite
+- Default tone in prompts: concise, direct, no figures of speech, no jargon. User can override but only via Slack from v0.3 onward.
