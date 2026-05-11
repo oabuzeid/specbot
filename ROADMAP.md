@@ -33,7 +33,7 @@ v0.1 (one-way generation) is replaceable. v0.2 and beyond are not.
 
 ## Phasing
 
-The phases are organized around audience. v0.1 through v0.2 are engine work for developers. v0.3 is the first phase a real PM will use. v0.4 adds learning on top of v0.3's usage data. v0.5 adds more user surfaces.
+v0.1 through v0.2 are engine work for developers. v0.3 is the first phase a real PM will use. v0.4 adds learning on top of v0.3's usage data. v0.5 adds more user surfaces.
 
 ### v0.1 — Foundation (built)
 
