@@ -57,25 +57,31 @@ This shifts the host from data-entry to review-and-confirm, which is faster for 
 
 **In scope:**
 
-- Mileage incidental only.
+- Mileage incidental only. Non-mileage incidental types (refueling, on-trip recharging, post-trip recharging, tolls, tickets) remain fully self-reported in this phase and appear alongside mileage on the existing multi-incidental review screen.
 - Backend pre-calculates excess mileage from mileage collection data and the trip's mileage limit.
+- The mileage rate is $2 per extra mile. The rate is stored per trip (not hard-coded) so future trips can carry different rates without a code change.
 - If excess is detected, the host sees a pre-filled excess mileage value and pre-calculated charge in the incidental flow.
 - Host can review, edit, or skip charging.
+- Before the invoice is sent, the host completes a pre-send attestation confirming the charges are accurate. The submission is dispatched only after explicit confirmation.
 - If the host submits and the total is under $100 → auto-charge guest (unchanged).
 - If the host submits and the total is $100 or more → route to claims (unchanged).
 
 **Out of scope (future phases):**
 
-- Pre-calculation for tolls and tickets?
+- Pre-calculation for non-mileage incidental types (refueling, recharging, tolls, tickets).
 - Showing guests the same before/after mileage breakdown in their receipt.
 
 ## 7. User Flow
 
 1. Trip ends. Backend reads mileage collection data and compares actual miles driven against the trip's mileage limit (e.g., 1,000-mile cap).
-2. If actual ≤ limit → no mileage incidental surfaced. End.
-3. If actual > limit → host sees an option in the incidental flow with the excess miles and the calculated charge already filled in.
-4. Host reviews the pre-filled value. They can: (a) accept and submit, (b) edit the value before submitting, or (c) skip charging.
-5. On submit: total < $100 → auto-charge guest. Total ≥ $100 → route to claims.
+2. Backend emits one of three states for the mileage incidental:
+   - **No excess** — actual ≤ limit. No mileage incidental surfaced. End.
+   - **Ready for review** — actual > limit AND check-in/check-out odometer photo evidence is verifiable. The host sees a pre-filled mileage incidental with the excess miles and calculated charge, and the verifying photos are auto-attached.
+   - **Unavailable** — actual > limit BUT odometer photo evidence is missing or unverifiable. The host sees an "Unavailable" badge with copy explaining the system cannot verify, and falls back to entering the mileage manually.
+3. Mileage is one row on the existing multi-incidental review screen, alongside other incidental types. Each row carries its own state badge.
+4. Host reviews the pre-filled value. They can: (a) accept and save, (b) edit the value before saving, or (c) skip charging (exit without saving).
+5. When the host has finished adding charges and taps Send on the Review Invoice screen, a pre-send attestation overlay appears. The host must explicitly confirm that the charges are accurate before the invoice is dispatched.
+6. On submit: total < $100 → auto-charge guest. Total ≥ $100 → route to claims.
 
 > Auto-flagging hosts whose manual edits diverge significantly from system-calculated values?
 
