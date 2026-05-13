@@ -11,7 +11,6 @@ tickets:
   mapping:
     epic: h1
     story: h2
-    task: "- [ ]"
   labels:
     - "conduit-managed"
 
@@ -26,6 +25,9 @@ tickets:
 
 ai:
   model: "claude-sonnet-4-20250514"
+  breakdown:
+    mode: "by_section"          # by_section | by_layer | by_component | custom
+    # custom_instructions: ""   # required only when mode is "custom"; tells Claude how to group stories
   ac_format:
     format: "given_when_then"   # given_when_then | bullets | numbered
     include_background: false   # if true, AC may restate story context (e.g. "Given a host has completed check-in...")

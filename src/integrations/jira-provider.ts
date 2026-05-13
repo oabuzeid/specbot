@@ -69,14 +69,8 @@ export class JiraProvider implements TicketProvider {
     const typeMap: Record<NonNullable<CreateTicketInput["type"]>, string> = {
       epic: "Epic",
       story: "Story",
-      task: "Subtask",
     };
-    const issueType =
-      input.type && typeMap[input.type]
-        ? typeMap[input.type]
-        : input.parentId
-          ? "Subtask"
-          : "Story";
+    const issueType = input.type && typeMap[input.type] ? typeMap[input.type] : "Story";
 
     const fields: Record<string, unknown> = {
       project: { id: projectId },

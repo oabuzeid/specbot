@@ -7,7 +7,6 @@ tickets:
   mapping:
     epic: h1
     story: h2
-    task: "- [ ]"
   labels:
     - "conduit-managed"
 
@@ -22,6 +21,9 @@ design:
 
 ai:
   model: "claude-sonnet-4-6"
+  breakdown:
+    mode: "by_layer"
+
   ac_format:
     format: "given_when_then"
     include_background: false

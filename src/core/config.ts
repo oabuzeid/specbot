@@ -14,6 +14,15 @@ export const DEFAULT_AC_FORMAT: AcFormat = {
   include_figma_links: false,
 };
 
+export type BreakdownMode = "by_section" | "by_layer" | "by_component" | "custom";
+
+export interface Breakdown {
+  mode: BreakdownMode;
+  custom_instructions?: string;
+}
+
+export const DEFAULT_BREAKDOWN: Breakdown = { mode: "by_section" };
+
 export interface FigmaChangeThreshold {
   min_frames_added: number;
   min_frames_removed: number;
@@ -36,7 +45,6 @@ export interface ConduitConfig {
     mapping: {
       epic: string;
       story: string;
-      task: string;
     };
     labels: string[];
   };
@@ -48,6 +56,7 @@ export interface ConduitConfig {
   ai: {
     model: string;
     ac_format: AcFormat;
+    breakdown: Breakdown;
   };
   sync: {
     auto_update: boolean;
@@ -72,6 +81,18 @@ export function loadConfig(dir: string = process.cwd()): ConduitConfig {
   );
 }
 
+function resolveBreakdown(partial: Partial<Breakdown> | undefined): Breakdown {
+  const merged: Breakdown = { ...DEFAULT_BREAKDOWN, ...(partial ?? {}) };
+  if (merged.mode === "custom" && !merged.custom_instructions?.trim()) {
+    throw new Error(
+      'conduit.yaml: ai.breakdown.mode is "custom" but ai.breakdown.custom_instructions is empty. ' +
+        "Provide a non-empty custom_instructions string describing how to group stories, " +
+        'or set mode to "by_section", "by_layer", or "by_component".'
+    );
+  }
+  return merged;
+}
+
 function applyDefaults(partial: Partial<ConduitConfig>): ConduitConfig {
   return {
     specs: partial.specs ?? ["specs/**/*.md"],
@@ -81,7 +102,6 @@ function applyDefaults(partial: Partial<ConduitConfig>): ConduitConfig {
       mapping: {
         epic: partial.tickets?.mapping?.epic ?? "h1",
         story: partial.tickets?.mapping?.story ?? "h2",
-        task: partial.tickets?.mapping?.task ?? "- [ ]",
       },
       labels: partial.tickets?.labels ?? ["conduit-managed"],
     },
@@ -100,6 +120,7 @@ function applyDefaults(partial: Partial<ConduitConfig>): ConduitConfig {
         ...DEFAULT_AC_FORMAT,
         ...(partial.ai?.ac_format ?? {}),
       },
+      breakdown: resolveBreakdown(partial.ai?.breakdown),
     },
     sync: {
       auto_update: partial.sync?.auto_update ?? false,

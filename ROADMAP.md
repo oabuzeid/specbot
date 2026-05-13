@@ -51,13 +51,13 @@ Built:
 - Figma audit (`conduit audit`)
 - GitHub Action for PR sync checks
 
-### v0.1.x — Engine UX improvements (next, small release)
+### v0.1.x — Engine UX improvements ✅
 
 Audience: developer.
 
 Goal: Address known gaps in v0.1's flexibility before adding agentic logic on top. These changes establish the configuration surface that v0.2's agent will operate over.
 
-1. **Configurable ticket breakdown** — `conduit.yaml` accepts a `breakdown` option: `by_section` (current), `by_layer` (backend/frontend split), `by_component`, or `custom` (user provides a prompt fragment). This becomes the action space the v0.2 agent can operate within.
+1. ✅ **Configurable ticket breakdown** — `conduit.yaml` accepts an `ai.breakdown` block with `mode` set to one of `by_section` (current — H2 sections become stories), `by_layer` (group stories by execution layer: backend, frontend, design, etc), `by_component` (group by UI/system component), or `custom` (user supplies `custom_instructions` describing the grouping rule). Custom mode without `custom_instructions` throws a clear config error at load time. Stories are the atomic unit — `generate` no longer emits subtasks, and the `task` type was removed from `GeneratedTicket`, `CreateTicketInput`, and the Jira/Linear providers. Engineers split stories into tasks themselves.
 
 2. ✅ **Project-level acceptance criteria format** — replaced `detail_level` with an `ac_format` object: `format` (`given_when_then` | `bullets` | `numbered`), `include_background` (whether AC may restate story context), `include_figma_links` (forward-looking; takes effect once `generate` ingests Figma in v0.2). Configured once per project, not per ticket. No `max_count` knob — AC count falls out of the work; the tone rule from #3 prevents padding.
 

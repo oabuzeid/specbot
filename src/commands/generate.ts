@@ -61,12 +61,6 @@ export async function runGenerate(options: GenerateOptions): Promise<void> {
           console.log(chalk.gray(`       ✓ ${ac}`));
         }
       }
-      const tasks = tickets.filter(
-        (t) => t.type === "task" && t.parent_title === story.title
-      );
-      for (const task of tasks) {
-        console.log(chalk.gray(`      ☐ [Task] ${task.title}`));
-      }
     }
   }
 

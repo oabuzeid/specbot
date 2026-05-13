@@ -1,8 +1,8 @@
 import Anthropic from "@anthropic-ai/sdk";
-import type { ConduitConfig } from "./config.js";
+import type { Breakdown, ConduitConfig } from "./config.js";
 
 export interface GeneratedTicket {
-  type: "epic" | "story" | "task";
+  type: "epic" | "story";
   title: string;
   description: string;
   acceptance_criteria: string[];
@@ -36,6 +36,7 @@ export async function generateTickets(
   specContext: string,
   config: ConduitConfig
 ): Promise<GeneratedTicket[]> {
+  const breakdownInstruction = renderBreakdownInstruction(config.ai.breakdown);
   const ac = config.ai.ac_format;
   const formatInstruction: Record<typeof ac.format, string> = {
     given_when_then:
@@ -52,7 +53,7 @@ export async function generateTickets(
       ? "Acceptance criteria may include brief story-context phrasing (e.g. 'Given a host has completed check-in...')."
       : "Acceptance criteria stay tight — assume the story context is already understood from the title and description. Do not restate it.",
     ac.include_figma_links
-      ? "When a story or task maps to a specific Figma frame, reference the frame name in the description or AC where it clarifies the work."
+      ? "When a story maps to a specific Figma frame, reference the frame name in the description or AC where it clarifies the work."
       : "",
   ]
     .filter(Boolean)
@@ -69,7 +70,7 @@ export async function generateTickets(
 
 Tone: concise, direct, plain language. No figures of speech, no jargon, no marketing-speak. Active voice. Each sentence earns its place.
 
-Given the following product spec, generate a structured set of tickets (epics, stories, and tasks) that engineering can execute against.
+Given the following product spec, generate a structured set of tickets (epics and stories) that engineering can execute against. Stories are the atomic unit of work — engineers split them into tasks themselves, so do not emit subtasks.
 
 WHICH SECTIONS BECOME TICKETS
 
@@ -88,8 +89,8 @@ ${acInstructions}
 STRUCTURE
 
 - H1 sections map to Epics.
-- H2 sections map to Stories under the nearest Epic.
-- Checkbox items map to Tasks under the nearest Story.
+- ${breakdownInstruction}
+- Checkbox items (\`- [ ]\`) in the spec are the author's draft task list. Fold the ones that imply real, testable behavior into the parent Story's acceptance criteria. Ignore throwaway items (e.g. "ask design", "follow up"). Do not emit them as separate tickets.
 - Preserve traceability: reference which spec file and section each ticket came from.
 
 OUTPUT
@@ -98,7 +99,7 @@ Respond ONLY with a JSON array of ticket objects. No markdown, no preamble.
 
 Each ticket object:
 {
-  "type": "epic" | "story" | "task",
+  "type": "epic" | "story",
   "title": "string",
   "description": "string",
   "acceptance_criteria": ["string"],
@@ -116,6 +117,19 @@ ${specContext}`,
   const text = response.content[0].type === "text" ? response.content[0].text : "";
   const cleaned = text.replace(/```json|```/g, "").trim();
   return JSON.parse(cleaned) as GeneratedTicket[];
+}
+
+function renderBreakdownInstruction(breakdown: Breakdown): string {
+  switch (breakdown.mode) {
+    case "by_section":
+      return "H2 sections map directly to Stories under the nearest Epic. The spec's section structure determines the story structure.";
+    case "by_layer":
+      return "Group Stories by execution layer (e.g. backend, frontend, mobile, design, infra, data). Stories cross H2 section boundaries — a single H2 section may produce multiple stories, one per layer involved, and a single layer may pull work from multiple sections. Only emit stories for layers the spec actually implies; do not invent empty backend/frontend splits when only one layer is involved.";
+    case "by_component":
+      return "Group Stories by UI or system component (e.g. \"Mileage Row Component,\" \"Attestation Overlay,\" \"Pre-Calculation Service\"). Each component story carries the full backend + frontend + design work needed to ship it. Identify components from the spec content; do not constrain yourself to the spec's section structure.";
+    case "custom":
+      return `Group Stories according to the following user-provided rule: ${breakdown.custom_instructions}. Apply this rule consistently across the spec.`;
+  }
 }
 
 export async function analyzeDrift(

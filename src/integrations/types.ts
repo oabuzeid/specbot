@@ -25,7 +25,7 @@ export interface CreateTicketInput {
   description: string;
   parentId?: string;
   labels?: string[];
-  type?: "epic" | "story" | "task";
+  type?: "epic" | "story";
 }
 
 export interface UpdateTicketInput {
