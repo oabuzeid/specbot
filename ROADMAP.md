@@ -63,7 +63,7 @@ Goal: Address known gaps in v0.1's flexibility before adding agentic logic on to
 
 3. ✅ **Default tone and ticket-writing rules in AI engine prompts** — opinionated tone (concise, direct, no figures of speech, no jargon, active voice) hard-coded in `generateTickets`. The three ticket-writing rules from CLAUDE.md are also encoded in the prompt: every ticket describes implementation work (no Overview/Background/context tickets); open-question sections produce decision tickets, not build tickets that presume answers; AC excludes anything the spec marks as unresolved (blockquote asides, items in Open/Design Questions sections, MVP-scope items with `?`). v0.3 will expose tone as a user-facing setting in Slack.
 
-4. **Per-project significant-change threshold for Figma** — `conduit.yaml` accepts a threshold (e.g. min frames added/removed, min characters of text change, scope of affected sections) that defines what counts as a "significant" Figma change worth surfacing. Consumed by v0.2's design-side change classifier; the value lives here so it's set once at project setup rather than per-event.
+4. ✅ **Per-project significant-change threshold for Figma** — `conduit.yaml` accepts a `design.significant_change_threshold` block with four fields: `min_frames_added` (default 1), `min_frames_removed` (default 1), `min_text_chars_changed` (default 50, roughly one CTA), and `track_top_level_only` (default true — ignore changes inside nested components). Defined in `src/core/config.ts` as `FigmaChangeThreshold` with `DEFAULT_FIGMA_THRESHOLD`; partial overrides supported. Consumed by v0.2's design-side change classifier.
 
 ### v0.2 — Agentic engine + capture layer
 

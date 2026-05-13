@@ -27,7 +27,7 @@ These are not built yet:
 - ❌ Configurable ticket breakdown (by_section, by_layer, by_component, custom)
 - ❌ Project-level acceptance criteria format
 - ✅ Default opinionated tone hard-coded in AI engine prompts (also encodes the three ticket-writing rules from CLAUDE.md: no context-only tickets, ignore open questions in AC, decision-style tickets for open-question sections)
-- ❌ Per-project significant-change threshold for Figma (consumed by v0.2's design-side classifier)
+- ✅ Per-project significant-change threshold for Figma (consumed by v0.2's design-side classifier)
 
 **v0.2 — Agentic engine + capture layer:**
 - ❌ Investigation agent (LLM directs control flow on webhook receipt)

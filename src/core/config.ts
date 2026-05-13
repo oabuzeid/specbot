@@ -2,6 +2,20 @@ import { readFileSync, existsSync } from "fs";
 import { parse as parseYaml } from "yaml";
 import { resolve } from "path";
 
+export interface FigmaChangeThreshold {
+  min_frames_added: number;
+  min_frames_removed: number;
+  min_text_chars_changed: number;
+  track_top_level_only: boolean;
+}
+
+export const DEFAULT_FIGMA_THRESHOLD: FigmaChangeThreshold = {
+  min_frames_added: 1,
+  min_frames_removed: 1,
+  min_text_chars_changed: 50,
+  track_top_level_only: true,
+};
+
 export interface ConduitConfig {
   specs: string[];
   tickets: {
@@ -17,6 +31,7 @@ export interface ConduitConfig {
   design?: {
     provider: "figma";
     file_id: string;
+    significant_change_threshold?: FigmaChangeThreshold;
   };
   ai: {
     model: string;
@@ -58,7 +73,15 @@ function applyDefaults(partial: Partial<ConduitConfig>): ConduitConfig {
       },
       labels: partial.tickets?.labels ?? ["conduit-managed"],
     },
-    design: partial.design,
+    design: partial.design
+      ? {
+          ...partial.design,
+          significant_change_threshold: {
+            ...DEFAULT_FIGMA_THRESHOLD,
+            ...(partial.design.significant_change_threshold ?? {}),
+          },
+        }
+      : undefined,
     ai: {
       model: partial.ai?.model ?? "claude-sonnet-4-20250514",
       detail_level: partial.ai?.detail_level ?? "standard",

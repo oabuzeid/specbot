@@ -18,6 +18,11 @@ tickets:
 # design:
 #   provider: figma
 #   file_id: "your-figma-file-id"
+#   significant_change_threshold:
+#     min_frames_added: 1          # top-level frames added before a webhook event is classified
+#     min_frames_removed: 1        # top-level frames removed before a webhook event is classified
+#     min_text_chars_changed: 50   # roughly one CTA or one sentence; below this is usually a typo or spacing tweak
+#     track_top_level_only: true   # ignore changes inside nested components (icons, padding, etc)
 
 ai:
   model: "claude-sonnet-4-20250514"
