@@ -51,7 +51,7 @@ Components:
 - Figma audit (`conduit audit`)
 - GitHub Action for PR sync checks
 
-### v0.1.x — Engine UX improvements ✅
+### v0.1.x — Engine improvements ✅
 
 Audience: developer.
 
